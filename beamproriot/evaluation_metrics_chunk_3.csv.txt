@@ -1,0 +1,23 @@
+
+Correctly Classified Instances      144623               97.873  %
+Incorrectly Classified Instances      3143                2.127  %
+Kappa statistic                          0.9562
+Mean absolute error                      0.0192
+Root mean squared error                  0.0913
+Relative absolute error                  9.7681 %
+Root relative squared error             29.0949 %
+Total Number of Instances           147766     
+
+Confusion Matrix
+     a     b     c     d     e   <-- classified as
+ 85939     5     0     0     0 |     a = CSH
+  2170 58684     0     0     0 |     b = CRD
+     0    46     0     0     0 |     c = UNK
+   718     1     0     0     0 |     d = NOC
+   201     2     0     0     0 |     e = DIS
+
+Accuracy: 97.87298837350947%
+Mean Absolute Error: 0.01922755701069332
+Root Mean Squared Error: 0.09127519434872744
+Relative Absolute Error: 9.768135651153974
+root Relative Squared Error: 29.09485174830792
