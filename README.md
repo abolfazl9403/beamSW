@@ -8,7 +8,25 @@ This repository contains a Java application that performs various data processin
 - Java 8 or higher
 - Apache Maven
 - Weka library (included in the project dependencies)
-- MQTT broker (e.g., Mosquitto)
+- MQTT broker (e.g., Mosquitto or [EMQ X website](https://www.emqx.com/en/mqtt/public-mqtt5-broker))
+
+## EMQ X Public MQTT5 Broker:
+- **Service Overview:** EMQ X Public MQTT5 Broker provides a robust and scalable MQTT broker service for connecting MQTT clients globally.
+- **Features:**
+  - MQTT version 5 support for enhanced functionality and performance.
+  - Publicly accessible broker for easy integration with various IoT and messaging applications.
+  - High availability and reliability to ensure seamless message delivery.
+  - Secure communication with support for authentication and authorization mechanisms.
+  - Real-time monitoring and statistics for monitoring MQTT traffic and performance.
+- **Usage Instructions:**
+  - Connect to the broker using the provided hostname and port.
+  - Subscribe to topics and publish messages using MQTT clients.
+  - Utilize MQTT features such as Quality of Service (QoS), retained messages, and session management.
+- **Integration Examples:** Various MQTT client libraries and frameworks support integration with EMQ X Public MQTT5 Broker, including but not limited to:
+  - Python: paho-mqtt
+  - Java: Eclipse Paho
+  - JavaScript: MQTT.js
+  - Node.js: MQTT.js
 
 ## Getting Started
 
@@ -42,12 +60,13 @@ This repository contains a Java application that performs various data processin
 6. Upon completion, check the specified output directories for results.
 
 
+
 ## Credits and Acknowledgments:
 - Apache Beam for providing the framework for data processing.
 - Weka library for machine learning functionalities.
 - MQTT for facilitating data communication.
 - Contributors to third-party libraries used in the project.
-- 
+  
 ## Features
 
 - **CSV Splitting**: The application can split a large CSV file into multiple smaller chunks, which can be useful for parallel processing or handling large datasets.
@@ -81,3 +100,6 @@ The project relies on the following third-party libraries:
 - Eclipse Paho MQTT Client
 
 These dependencies are managed by Maven and included in the project's `pom.xml` file.
+
+
+
