@@ -15,10 +15,10 @@ public class MQTTPub {
 
     public static void main(String[] args) {
         String broker = GlobalConstants.mqttBroker;
-        String clientId = "Publisher";
-        String pubTopic = "topic/test_pub";
+        String clientId = GlobalConstants.clientIdPublisher;
+        String pubTopic = GlobalConstants.publisherTopic;
         int pubQos = 1;
-        String msg = App.dtc+"\\chunk_1.csv";
+        String msg = GlobalConstants.dataFilePath;
 
         try {
             System.out.println("Connecting to MQTT broker...");
@@ -40,7 +40,7 @@ public class MQTTPub {
 
                                 // Introduce delay between publishing each message (adjust delay time as needed)
                                 System.out.println("Published message: " + line);
-                                Thread.sleep(100); // Delay for .1 second (100 milliseconds)
+                                Thread.sleep(1); // Delay for .1 second (100 milliseconds)
                             }
                         } catch (IOException | InterruptedException e) {
                             e.printStackTrace();

@@ -1,16 +1,19 @@
 package abolfazl.younesi.spout;
 
-import abolfazl.younesi.App;  
-import weka.classifiers.trees.J48;  
-import weka.classifiers.Evaluation;  
-import weka.core.SerializationHelper;  
-import weka.core.Instances;  
-import weka.core.converters.CSVLoader;  
+import abolfazl.younesi.App;
+import weka.classifiers.trees.J48;
+import weka.classifiers.Evaluation;
+import weka.core.SerializationHelper;
+import weka.core.Instances;
+import weka.core.converters.CSVLoader;
 
-import java.io.FileWriter;  
-import java.io.PrintWriter;  
-import java.io.File;  
-import java.io.IOException;  
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.io.File;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class DTTest {
     public static J48 loadModel(String modelFilePath) throws IOException, ClassNotFoundException { // Method for loading the saved model
@@ -60,7 +63,7 @@ public class DTTest {
                 double predictedClass = model.classifyInstance(testData.get(i)); // Classifying test instance
 //                System.out.println("Instance " + (i + 1) + ": Predicted class = " + testData.classAttribute().value((int) predictedClass)); 
             }
-            System.out.println("Test data classified successfully."); 
+            System.out.println("Test data classified successfully.");
         } catch (Exception e) {
             System.err.println("Error classifying test data: " + e.getMessage()); // Printing error message
         }
@@ -102,8 +105,8 @@ public class DTTest {
             e.printStackTrace();
         }
     }
-
-//public static void main(String[] args) {
+}
+//    public static void main(String[] args) {
 //        try {
 //            // Load the saved model
 //            String modelFilePath = "E:\\beampro\\beamproriot\\DTC.model";
@@ -116,8 +119,8 @@ public class DTTest {
 //            }
 //
 //            // Load test data
-//            String fileName= "chunk_3.csv";
-//            String csvFilePath = App.dtc+"\\"+fileName; // Replace with your test data file path
+//            String fileName = "chunk_1.csv";
+//            String csvFilePath = App.dtc + "\\" + fileName; // Replace with your test data file path
 //            System.out.println("Loading test data...");
 //            Instances testData = loadTestData(csvFilePath);
 //
@@ -126,15 +129,24 @@ public class DTTest {
 //                return; // Exit the program
 //            }
 //
-//            // Classify test instances
-//            System.out.println("Classifying test instances...");
-//            classifyTestData(model, testData);
+//            // Parallelize classification and evaluation
+//            ExecutorService executor = Executors.newFixedThreadPool(2);
 //
-//            // Evaluate model and save metrics to a text file
-//            String outputFilePath = "evaluation_metrics_"+fileName+".txt";
-//            evaluateModel(model, testData, outputFilePath);
+//            executor.submit(() -> {
+//                // Classify test instances
+//                System.out.println("Classifying test instances...");
+//                classifyTestData(model, testData);
+//            });
+//
+//            executor.submit(() -> {
+//                // Evaluate model and save metrics to a text file
+//                String outputFilePath = "evaluation_metrics_" + fileName + ".txt";
+//                evaluateModel(model, testData, outputFilePath);
+//            });
+//
+//            executor.shutdown();
+//            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 //        } catch (Exception e) {
 //            e.printStackTrace();
 //        }
 //    }
-}

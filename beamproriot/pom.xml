@@ -181,6 +181,11 @@
             <artifactId>beam-runners-flink-1.16</artifactId>
             <version>2.54.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-mqtt</artifactId>
+            <version>2.54.0</version>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/org.jfree/jfreechart -->
         <dependency>
             <groupId>org.jfree</groupId>

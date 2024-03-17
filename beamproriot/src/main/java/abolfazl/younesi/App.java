@@ -2,11 +2,15 @@ package abolfazl.younesi;
 
 import abolfazl.younesi.beamutil.*;
 
+import abolfazl.younesi.bolts.BWABeam;
 import abolfazl.younesi.bolts.BlockWindowAverage;
 import abolfazl.younesi.bolts.DTC;
 import abolfazl.younesi.bolts.TaxiData;
+import abolfazl.younesi.genevents.utils.GlobalConstants;
 import abolfazl.younesi.spout.DTTest;
 
+import abolfazl.younesi.spout.MQTTBeamPub;
+import abolfazl.younesi.spout.MQTTSub;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.Compression;
@@ -15,6 +19,9 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Contextful;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.apache.beam.sdk.options.Default;
@@ -23,9 +30,9 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 
+import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import weka.classifiers.Classifier;
 import weka.classifiers.trees.J48;
 import weka.core.Instances;
 
@@ -36,24 +43,16 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
 
 public class App {
-    private static final Logger LOG = LoggerFactory.getLogger(App.class);
+    public static final Logger LOG = LoggerFactory.getLogger(App.class);
     public static String dtc = "F:\\utf-8-FOIL2013\\FOIL2013\\output";
-    public interface Options extends StreamingOptions {
-        @Description("Input text to print.")
-        @Default.String("My, input, text")
-        String getInputText();
-        void setInputText(String value);
-
-        @Description("Delimiter to separate input elements.")
-        @Default.String(",")
-        String getDelimiter();
-        void setDelimiter(String value);
-    }
 
     private static PCollection<String> readInputData(Pipeline p, String inputFilePath) {
         return p.apply("ReadData",
@@ -86,16 +85,16 @@ public class App {
                 .withNumShards(numberOfChunks));
     }
 
-    // DoFn to invoke dtcclassify method
+    // DoFn to invoke dtcClassify method
     static class InvokeDTC extends DoFn<String, Void> {
         @ProcessElement
         public void processElement(@Element String line, OutputReceiver<Void> out) {
             try {
                 // Call dtcclassify() method from DTC class
-                DTC.dtcClassify(dtc+"\\chunk_1.csv",dtc);
+                DTC.dtcClassify(GlobalConstants.dataFilePath,dtc);
             } catch (Exception e) {
                 // Log error and continue processing
-                LOG.warn("Error invoking dtcclassify(): {}", e.getMessage());
+                LOG.warn("Error invoking dtcClassify(): {}", e.getMessage());
             }
         }
     }
@@ -114,7 +113,6 @@ public class App {
         String csvInputFile = "F:\\utf-8-FOIL2013\\FOIL2013\\trip_fare_1\\trip_fare_1.csv"; //---- Replace with your CSV file path
         String chunkOutputFolder = "F:\\utf-8-FOIL2013\\FOIL2013\\output"; //----- Replace with your output folder path
         String arffOutputFile = "F:\\utf-8-FOIL2013\\FOIL2013\\arffoutput";
-        int numberOfChunks = 10; // Number of chunks
 
 //        PCollection<String> csvInputData = readCSVLines(p, csvInputFile);
 
@@ -126,43 +124,56 @@ public class App {
         System.out.println("Writing chunks to output...");
 //        writeChunks(chunks, outputFolder, numberOfChunks);
 
-        DTC.dtcClassify(dtc+"\\chunk_1.csv",dtc);
+        DTC.dtcClassify(GlobalConstants.dataFilePath,dtc);
 
+        // BEAM BWA
+        PCollection<String> taxiData_ = p.apply(TextIO.read().from(GlobalConstants.dataFilePath));
+
+        PCollection<KV<Integer, Double>> averages = taxiData_
+                .apply(ParDo.of(new BWABeam.CalculateBlockAverage()))
+                .apply(Window.<KV<Integer, Double>>into(FixedWindows.of(Duration.standardMinutes(1))));
+
+        PCollection<String> averagesAsStrings = averages.apply(ParDo.of(new BWABeam.KVToStringFn()));
+
+        averagesAsStrings
+                .apply(TextIO.write()
+                        .to(App.dtc + "\\BWA")
+                        .withHeader(BWABeam.HEADER)
+                        .withNumShards(4));
 
         try {
-            int numFilesWritten = CSVSplitter.splitCSV(csvInputFile, chunkOutputFolder, numberOfChunks);
+            int numFilesWritten = CSVSplitter.splitCSV(csvInputFile, chunkOutputFolder, GlobalConstants.numberOfChunks);
             System.out.println("Total number of files written: " + numFilesWritten);
 
             CSVToARFF.convertCSVsToARFFs(chunkOutputFolder, arffOutputFile);
             System.out.println("Conversion completed successfully.");
 
-            p.apply("ReadInputData", TextIO.read().from(chunkOutputFolder + "\\chunk_1.csv"))
+            p.apply("ReadInputData", TextIO.read().from(GlobalConstants.dataFilePath))
                     .apply("InvokeDTC", MapElements.into(TypeDescriptors.strings()).via((String line) -> {
                         try {
-                            DTC.dtcClassify(dtc+"\\chunk_1.csv",dtc);
+                            DTC.dtcClassify(GlobalConstants.dataFilePath,dtc);
                         } catch (Exception e) {
-                            LOG.warn("Error invoking dtcclassify(): {}", e.getMessage());
+                            LOG.warn("Error invoking dtcClassify(): {}", e.getMessage());
                         }
                         return ""; // or any other value as per your requirement
                     }));
 
             // Block window average
-            int blockSize = 5; // Define your block size
-            BlockWindowAverage blockWindowAverage = new BlockWindowAverage(blockSize);
 
-            String csvFile = App.dtc + "\\chunk_1.csv"; // Provide the path to your CSV file
+            BlockWindowAverage blockWindowAverage = new BlockWindowAverage(GlobalConstants.windowBlockSize);
+
             String outputDirectory = App.dtc + "\\BWA"; // Provide the path to the output directory
             String line;
             String cvsSplitBy = ",";
 
             // Check if the input file exists
-            File inputFile = new File(csvFile);
+            File inputFile = new File(GlobalConstants.dataFilePath);
             if (!inputFile.exists()) {
-                System.err.println("Input file does not exist: " + csvFile);
+                System.err.println("Input file does not exist: " + GlobalConstants.dataFilePath);
                 return;
             }
 
-            try (BufferedReader br = new BufferedReader(new FileReader(csvFile))) {
+            try (BufferedReader br = new BufferedReader(new FileReader(GlobalConstants.dataFilePath))) {
                 while ((line = br.readLine()) != null) {
                     String[] data = line.split(cvsSplitBy);
                     // Skipping header row
@@ -171,7 +182,7 @@ public class App {
                             TaxiData taxiData = new TaxiData(data);
                             blockWindowAverage.addData(taxiData);
                             // Save processed data to new file for each block
-                            blockWindowAverage.saveProcessedData(outputDirectory, blockSize);
+                            blockWindowAverage.saveProcessedData(outputDirectory, GlobalConstants.windowBlockSize);
                             System.out.println("Average total amount for block: " + blockWindowAverage.getAverage());
                         } catch (ParseException e) {
                             System.err.println("Error parsing data: " + e.getMessage());
@@ -185,6 +196,7 @@ public class App {
             blockWindowAverage.saveAverageToFile(outputDirectory);
             // Write accumulated average data to file
 //        blockWindowAverage.writeAveragesToFile(outputDirectory);
+
 
 
             // DTC test
@@ -209,18 +221,39 @@ public class App {
                 return; // Exit the program
             }
 
-            // Classify test instances
-            System.out.println("Classifying test instances...");
-            DTTest.classifyTestData(model, testData);
+            // Parallelize classification and evaluation
+            ExecutorService executor = Executors.newFixedThreadPool(2);
 
-            // Evaluate model and save metrics to a text file
-            String outputFilePath = "evaluation_metrics_"+fileName+".txt";
-            DTTest.evaluateModel(model, testData, outputFilePath);
+            executor.submit(() -> {
+                // Classify test instances
+                System.out.println("Classifying test instances...");
+                DTTest.classifyTestData(model, testData);
+            });
+
+            executor.submit(() -> {
+                // Evaluate model and save metrics to a text file
+                String outputFilePath = "evaluation_metrics_" + fileName + ".txt";
+                DTTest.evaluateModel(model, testData, outputFilePath);
+            });
+
+            executor.shutdown();
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+
+
+            // mqtt publisher
+            LOG.info("Reading CSV file: {}", GlobalConstants.dataFilePath);
+            PCollection<String> csvLines = p.apply("ReadCSV", TextIO.read().from(GlobalConstants.dataFilePath));
+
+            LOG.info("Publishing to MQTT broker: {}", GlobalConstants.mqttBroker);
+            csvLines.apply("PublishToMQTT", ParDo.of(new MQTTBeamPub.PublishToMQTTFn(GlobalConstants.mqttBroker, GlobalConstants.clientIdPublisher, GlobalConstants.publisherTopic, GlobalConstants.pubQos)));
+
+            // mqtt subscriber
+//            MQTTSub.mqttSub();
 
         } catch (IOException e) {
             System.err.println("Error occurred while splitting CSV file: " + e.getMessage());
             e.printStackTrace();
-        } catch (ClassNotFoundException e) {
+        } catch (ClassNotFoundException | InterruptedException e) {
             throw new RuntimeException(e);
         }
 
@@ -228,7 +261,7 @@ public class App {
         System.out.println("Running the pipeline...");
         p.run().waitUntilFinish();
 
-        System.out.println("CSV file has been split successfully.");
+        System.out.println("The Program has been executed successfully.");
 
     }
 
