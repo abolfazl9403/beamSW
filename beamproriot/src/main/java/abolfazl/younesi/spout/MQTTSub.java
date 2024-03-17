@@ -20,7 +20,7 @@ public class MQTTSub {
     public static long individualLatency;
     private static final Queue<Long> messageTimestamps = new ArrayDeque<>(); // Sliding window for message timestamps
 
-    public static void main(String[] args) {
+    public static void mqttSub() {
         String broker = GlobalConstants.mqttBroker;
         String clientId = GlobalConstants.clientIdSubscriber;
         String subTopic = GlobalConstants.publisherTopic;

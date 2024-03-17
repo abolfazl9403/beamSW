@@ -248,7 +248,7 @@ public class App {
             csvLines.apply("PublishToMQTT", ParDo.of(new MQTTBeamPub.PublishToMQTTFn(GlobalConstants.mqttBroker, GlobalConstants.clientIdPublisher, GlobalConstants.publisherTopic, GlobalConstants.pubQos)));
 
             // mqtt subscriber
-//            MQTTSub.mqttSub();
+            MQTTSub.mqttSub();
 
         } catch (IOException e) {
             System.err.println("Error occurred while splitting CSV file: " + e.getMessage());
